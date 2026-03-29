@@ -1,24 +1,34 @@
 """
 CineAI - Movie Recommendation System
-Run: python app.py
+Run locally: python app.py
 Then open: http://127.0.0.1:5000
 """
 
-from flask import Flask, request, jsonify, send_from_directory
-import pandas as pd
 import ast
+import os
+from pathlib import Path
+
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", "1")
+
+import pandas as pd
+from flask import Flask, jsonify, request, send_from_directory
+from sklearn.cluster import MiniBatchKMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import cosine_similarity
+
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_CSV_PATH = BASE_DIR / "data" / "tmdb_5000_credits.csv"
+CSV_PATH = Path(os.getenv("CSV_PATH", DEFAULT_CSV_PATH))
 
 app = Flask(__name__, static_folder=".")
 
-CSV_PATH = r"D:\Desktop\tmdb_5000_credits.csv"
-
-print("CineAI starting up...")
-print(f"Loading: {CSV_PATH}")
-
-df = pd.read_csv(CSV_PATH)
+model_state = {
+    "ready": False,
+    "error": None,
+    "df": None,
+    "indices": None,
+    "tfidf_matrix": None,
+}
 
 
 def extract_names(json_str, key="name", limit=5):
@@ -37,25 +47,63 @@ def extract_director(crew_json):
         return []
 
 
-df["cast_names"] = df["cast"].apply(lambda x: extract_names(x, "name", 5))
-df["director"] = df["crew"].apply(extract_director)
-df["soup"] = df.apply(
-    lambda r: " ".join(r["cast_names"]) + " " + " ".join(r["director"]), axis=1
-)
+def load_model_state():
+    if model_state["ready"] or model_state["error"]:
+        return
 
-print("Building TF-IDF matrix...")
-tfidf = TfidfVectorizer(stop_words="english", max_features=5000)
-tfidf_matrix = tfidf.fit_transform(df["soup"])
-cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
-num_clusters = min(50, max(8, len(df) // 100))
-print(f"Training K-Means with {num_clusters} clusters...")
-kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
-df["cluster"] = kmeans.fit_predict(tfidf_matrix)
-indices = pd.Series(df.index, index=df["title"]).drop_duplicates()
-print(f"{len(df)} movies indexed. Server ready.\n")
+    try:
+        print("CineAI starting up...")
+        print(f"Loading dataset from: {CSV_PATH}")
+
+        df = pd.read_csv(CSV_PATH)
+        df["cast_names"] = df["cast"].apply(lambda x: extract_names(x, "name", 5))
+        df["director"] = df["crew"].apply(extract_director)
+        df["soup"] = df.apply(
+            lambda r: " ".join(r["cast_names"]) + " " + " ".join(r["director"]),
+            axis=1,
+        )
+
+        print("Building TF-IDF matrix...")
+        tfidf = TfidfVectorizer(stop_words="english", max_features=5000)
+        tfidf_matrix = tfidf.fit_transform(df["soup"])
+
+        num_clusters = min(50, max(8, len(df) // 100))
+        print(f"Training MiniBatchKMeans with {num_clusters} clusters...")
+        kmeans = MiniBatchKMeans(
+            n_clusters=num_clusters,
+            random_state=42,
+            n_init=3,
+            batch_size=1024,
+        )
+        df["cluster"] = kmeans.fit_predict(tfidf_matrix)
+        indices = pd.Series(df.index, index=df["title"]).drop_duplicates()
+
+        model_state["df"] = df
+        model_state["indices"] = indices
+        model_state["tfidf_matrix"] = tfidf_matrix
+        model_state["ready"] = True
+        print(f"{len(df)} movies indexed. Server ready.\n")
+    except Exception as exc:
+        model_state["error"] = str(exc)
+        print(f"Startup failed: {exc}")
+
+
+def get_model_or_error():
+    load_model_state()
+    if not model_state["ready"]:
+        message = (
+            "Dataset not available. Set CSV_PATH or add the dataset to "
+            f"{DEFAULT_CSV_PATH}."
+        )
+        if model_state["error"]:
+            message = f"{message} Details: {model_state['error']}"
+        return None, (jsonify({"error": message}), 503)
+    return model_state, None
 
 
 def find_title_match(query):
+    indices = model_state["indices"]
+
     if query in indices:
         return query
 
@@ -83,24 +131,30 @@ def build_result_row(row, score):
 
 
 def recommend_by_kmeans(idx, limit=10):
+    df = model_state["df"]
+    tfidf_matrix = model_state["tfidf_matrix"]
     cluster_id = df.iloc[idx]["cluster"]
     cluster_indices = df.index[df["cluster"] == cluster_id].tolist()
 
-    ranked_cluster = sorted(
-        ((i, cosine_sim[idx][i]) for i in cluster_indices if i != idx),
-        key=lambda x: x[1],
-        reverse=True,
-    )
+    query_vector = tfidf_matrix[idx]
+    same_cluster = [i for i in cluster_indices if i != idx]
+    ranked_cluster = []
+
+    if same_cluster:
+        same_cluster_scores = cosine_similarity(
+            query_vector, tfidf_matrix[same_cluster]
+        )[0]
+        ranked_cluster = sorted(
+            zip(same_cluster, same_cluster_scores), key=lambda x: x[1], reverse=True
+        )
 
     if len(ranked_cluster) < limit:
+        other_indices = [
+            i for i in range(len(df)) if i != idx and i not in set(cluster_indices)
+        ]
+        other_scores = cosine_similarity(query_vector, tfidf_matrix[other_indices])[0]
         fallback = sorted(
-            (
-                (i, cosine_sim[idx][i])
-                for i in range(len(df))
-                if i != idx and i not in cluster_indices
-            ),
-            key=lambda x: x[1],
-            reverse=True,
+            zip(other_indices, other_scores), key=lambda x: x[1], reverse=True
         )
         ranked_cluster.extend(fallback[: limit - len(ranked_cluster)])
 
@@ -109,11 +163,16 @@ def recommend_by_kmeans(idx, limit=10):
 
 @app.route("/")
 def home():
-    return send_from_directory(".", "index.html")
+    return send_from_directory(BASE_DIR, "index.html")
 
 
 @app.route("/api/movies")
 def get_movies():
+    state, error_response = get_model_or_error()
+    if error_response:
+        return error_response
+
+    df = state["df"]
     movies = []
     for _, row in df.iterrows():
         cast = row["cast_names"] if isinstance(row["cast_names"], list) else []
@@ -131,6 +190,13 @@ def get_movies():
 
 @app.route("/api/recommend")
 def recommend():
+    state, error_response = get_model_or_error()
+    if error_response:
+        return error_response
+
+    df = state["df"]
+    indices = state["indices"]
+    tfidf_matrix = state["tfidf_matrix"]
     query = request.args.get("title", "").strip()
     method = request.args.get("method", "kmeans").strip().lower()
     if not query:
@@ -142,9 +208,12 @@ def recommend():
 
     idx = indices[matched_title]
     if method == "cosine":
+        scores = cosine_similarity(tfidf_matrix[idx], tfidf_matrix)[0]
         ranked_items = sorted(
-            enumerate(cosine_sim[idx]), key=lambda x: x[1], reverse=True
-        )[1:11]
+            ((i, score) for i, score in enumerate(scores) if i != idx),
+            key=lambda x: x[1],
+            reverse=True,
+        )[:10]
     else:
         ranked_items = recommend_by_kmeans(idx)
 
@@ -177,6 +246,7 @@ def add_cors(response):
 
 
 if __name__ == "__main__":
+    print(f"Expected dataset path: {CSV_PATH}")
     print("Open your browser at: http://127.0.0.1:5000")
     print("Press Ctrl+C to stop.\n")
     app.run(debug=False, port=5000)

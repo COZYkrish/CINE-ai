@@ -1100,11 +1100,11 @@
   </main>
 
   <footer class="footer">
-    CineAI frontend for Flask API at <span id="serverUrlLabel">http://127.0.0.1:5000</span>
+    CineAI frontend for Flask API at <span id="serverUrlLabel">same origin</span>
   </footer>
 
   <script>
-    const BASE_URL = "http://127.0.0.1:5000";
+    const BASE_URL = window.location.origin;
     const MOVIES_ENDPOINT = BASE_URL + "/api/movies";
     const RECOMMEND_ENDPOINT = BASE_URL + "/api/recommend?title=";
 
@@ -1331,6 +1331,7 @@
     }
 
     async function loadMovies() {
+      elements.serverUrlLabel.textContent = BASE_URL;
       setStatus("", "Checking server...");
 
       try {
@@ -1348,7 +1349,7 @@
       } catch (error) {
         state.movies = [];
         setStatus("offline", "Server offline");
-        showError("Unable to connect to the Flask API. Make sure the server is running at http://127.0.0.1:5000.");
+        showError(`Unable to connect to the Flask API at ${BASE_URL}.`);
       }
     }
 
