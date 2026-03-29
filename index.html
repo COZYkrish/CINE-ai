@@ -993,9 +993,9 @@
           </div>
 
           <div class="terminal-card">
-            <span class="eyebrow">Live Dataset Search</span>
+            <span class="eyebrow">Static Dataset Search</span>
             <p class="muted-note">
-              Autocomplete suggestions come directly from the Flask API, so the frontend stays synced with your movie dataset.
+              Autocomplete and recommendations are loaded from a prebuilt catalog, so the site works as a static Vercel deploy.
             </p>
           </div>
         </div>
@@ -1034,7 +1034,7 @@
       <div class="section-head">
         <div>
           <h3>Recommendation Results</h3>
-          <p>Featured movie details and the top 10 similar titles ranked by your Flask recommender.</p>
+          <p>Featured movie details and the top 10 similar titles ranked from the precomputed recommendation catalog.</p>
         </div>
       </div>
 
@@ -1100,16 +1100,16 @@
   </main>
 
   <footer class="footer">
-    CineAI frontend for Flask API at <span id="serverUrlLabel">same origin</span>
+    CineAI static frontend powered by <span id="serverUrlLabel">local catalog data</span>
   </footer>
 
   <script>
-    const BASE_URL = window.location.origin;
-    const MOVIES_ENDPOINT = BASE_URL + "/api/movies";
-    const RECOMMEND_ENDPOINT = BASE_URL + "/api/recommend?title=";
+    const CATALOG_URL = "./data/catalog.json";
 
     const state = {
+      catalog: null,
       movies: [],
+      moviesByTitle: new Map(),
       suggestions: [],
       activeSuggestionIndex: -1
     };
@@ -1129,7 +1129,8 @@
       methodCard: document.getElementById("methodCard"),
       featureGrid: document.getElementById("featureGrid"),
       recommendationsGrid: document.getElementById("recommendationsGrid"),
-      resultsSection: document.getElementById("resultsSection")
+      resultsSection: document.getElementById("resultsSection"),
+      serverUrlLabel: document.getElementById("serverUrlLabel")
     };
 
     function escapeHtml(value) {
@@ -1289,11 +1290,11 @@
       `;
 
       elements.methodCard.innerHTML = `
-        <span class="method-badge">Method: ${escapeHtml(data.method || "kmeans")}</span>
+        <span class="method-badge">Method: ${escapeHtml(data.method || state.catalog?.method || "kmeans")}</span>
         <div class="method-stack">
           <div class="detail">
             <label>Pipeline</label>
-            <span>TF-IDF vectorization + cosine scoring + K-Means clustering</span>
+            <span>${escapeHtml(state.catalog?.pipeline || "TF-IDF vectorization + cosine scoring + K-Means clustering")}</span>
           </div>
           <div class="detail">
             <label>Interpretation</label>
@@ -1330,26 +1331,63 @@
         .join("");
     }
 
-    async function loadMovies() {
-      elements.serverUrlLabel.textContent = BASE_URL;
-      setStatus("", "Checking server...");
+    function findTitleMatch(query) {
+      const normalizedQuery = query.trim().toLowerCase();
+      if (!normalizedQuery) {
+        return null;
+      }
+
+      if (state.moviesByTitle.has(normalizedQuery)) {
+        return state.moviesByTitle.get(normalizedQuery);
+      }
+
+      return (
+        state.movies.find((movie) => movie.title && movie.title.toLowerCase().includes(normalizedQuery)) ||
+        null
+      );
+    }
+
+    function buildSearchPayload(movie) {
+      return {
+        query: movie.title,
+        queried_cast: Array.isArray(movie.cast) ? movie.cast : [],
+        queried_dir: movie.director || "Unknown",
+        method: state.catalog?.method || "kmeans",
+        cluster: movie.cluster,
+        results: Array.isArray(movie.results) ? movie.results : []
+      };
+    }
+
+    async function loadCatalog() {
+      elements.serverUrlLabel.textContent = CATALOG_URL;
+      setStatus("", "Loading catalog...");
 
       try {
-        const response = await fetch(MOVIES_ENDPOINT);
+        const response = await fetch(CATALOG_URL);
         if (!response.ok) {
-          throw new Error("Movie list request failed");
+          throw new Error("Catalog request failed");
         }
 
-        const movies = await response.json();
-        state.movies = Array.isArray(movies) ? movies : [];
+        const catalog = await response.json();
+        const movies = Array.isArray(catalog.movies) ? catalog.movies : [];
 
-        setStatus("online", "Server online");
+        state.catalog = catalog;
+        state.movies = movies;
+        state.moviesByTitle = new Map(
+          movies
+            .filter((movie) => movie.title)
+            .map((movie) => [movie.title.toLowerCase(), movie])
+        );
+
+        setStatus("online", `Catalog ready - ${movies.length} movies`);
         renderSampleSection();
         renderBrowseSection();
       } catch (error) {
+        state.catalog = null;
         state.movies = [];
-        setStatus("offline", "Server offline");
-        showError(`Unable to connect to the Flask API at ${BASE_URL}.`);
+        state.moviesByTitle = new Map();
+        setStatus("offline", "Catalog unavailable");
+        showError("Unable to load the static recommendation catalog. Rebuild data/catalog.json before deploying.");
       }
     }
 
@@ -1378,13 +1416,12 @@
       elements.recommendationsGrid.innerHTML = "";
 
       try {
-        const response = await fetch(RECOMMEND_ENDPOINT + encodeURIComponent(query));
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Movie not found.");
+        const movie = findTitleMatch(query);
+        if (!movie) {
+          throw new Error(`Movie "${query}" not found.`);
         }
 
+        const data = buildSearchPayload(movie);
         renderFeaturedMovie(data);
         renderRecommendations(data.results);
         elements.resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1474,7 +1511,7 @@
       }
     });
 
-    loadMovies();
+    loadCatalog();
   </script>
 </body>
 </html>
