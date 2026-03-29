@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineAI | Movie Recommendation System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --bg: #071018;
+      --bg-soft: rgba(11, 20, 31, 0.75);
+      --panel: rgba(18, 30, 43, 0.62);
+      --panel-strong: rgba(16, 27, 40, 0.9);
+      --text: #f5f7fb;
+      --muted: #aab7c7;
+      --line: rgba(255, 255, 255, 0.08);
+      --red: #ff4d6d;
+      --cyan: #44e6ff;
+      --gold: #ffd166;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      --radius-lg: 28px;
+      --radius-md: 20px;
+      --radius-sm: 14px;
+      --container: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(68, 230, 255, 0.14), transparent 32%),
+        radial-gradient(circle at top right, rgba(255, 77, 109, 0.18), transparent 30%),
+        radial-gradient(circle at 50% 20%, rgba(255, 209, 102, 0.08), transparent 22%),
+        linear-gradient(135deg, #03070b 0%, #08111b 45%, #050b12 100%);
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      z-index: -1;
+      width: 28rem;
+      height: 28rem;
+      border-radius: 50%;
+      filter: blur(30px);
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    body::before {
+      top: -8rem;
+      left: -8rem;
+      background: rgba(255, 77, 109, 0.16);
+      animation: floatGlow 10s ease-in-out infinite;
+    }
+
+    body::after {
+      right: -8rem;
+      bottom: -6rem;
+      background: rgba(68, 230, 255, 0.12);
+      animation: floatGlow 13s ease-in-out infinite reverse;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      width: min(calc(100% - 2rem), var(--container));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(3, 8, 13, 0.55);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .topbar-inner {
+      width: min(calc(100% - 2rem), var(--container));
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      color: #06131c;
+      background: linear-gradient(135deg, var(--red), var(--cyan));
+      box-shadow: 0 10px 24px rgba(68, 230, 255, 0.24);
+    }
+
+    .brand-copy h1 {
+      margin: 0;
+      font-family: "Syne", sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .brand-copy p {
+      margin: 0.15rem 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #6b7280;
+      box-shadow: 0 0 0 0 rgba(107, 114, 128, 0.4);
+      animation: pulse 1.8s infinite;
+    }
+
+    .status-pill.online .status-dot {
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+    }
+
+    .status-pill.offline .status-dot {
+      background: var(--red);
+      box-shadow: 0 0 0 0 rgba(255, 77, 109, 0.5);
+    }
+
+    .hero {
+      padding: 5.4rem 0 2.2rem;
+      position: relative;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+      gap: 1.6rem;
+      align-items: stretch;
+    }
+
+    .hero-card,
+    .glass-card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px);
+      border-radius: var(--radius-lg);
+    }
+
+    .hero-card {
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      inset: auto -4rem -4rem auto;
+      width: 14rem;
+      height: 14rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(68, 230, 255, 0.16), transparent 65%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #dbe8f4;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--red), var(--cyan));
+    }
+
+    .hero h2 {
+      margin: 1.15rem 0 0.9rem;
+      font-family: "Syne", sans-serif;
+      font-size: clamp(2.7rem, 7vw, 5.6rem);
+      line-height: 0.96;
+      letter-spacing: -0.04em;
+    }
+
+    .hero h2 .accent {
+      background: linear-gradient(135deg, #ffffff 5%, var(--cyan) 60%, var(--red) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero p.lead {
+      max-width: 60ch;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 1.02rem;
+    }
+
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1.6rem;
+    }
+
+    .metric {
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .metric strong {
+      display: block;
+      font-family: "Syne", sans-serif;
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .hero-side {
+      padding: 1.3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .terminal-card {
+      flex: 1;
+      padding: 1.1rem;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+        rgba(5, 10, 16, 0.75);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .terminal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .lights {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .lights span {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: block;
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .lights span:nth-child(1) { background: #ff5f57; }
+    .lights span:nth-child(2) { background: #febc2e; }
+    .lights span:nth-child(3) { background: #28c840; }
+
+    .terminal-label {
+      color: var(--muted);
+      font-size: 0.87rem;
+    }
+
+    .terminal-line {
+      display: flex;
+      gap: 0.8rem;
+      color: #dce8f5;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .prompt {
+      color: var(--cyan);
+    }
+
+    .typed {
+      white-space: nowrap;
+      overflow: hidden;
+      border-right: 2px solid rgba(255, 255, 255, 0.7);
+      animation: typing 4.2s steps(28) infinite alternate, cursorBlink 0.7s step-end infinite;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 1rem;
+    }
+
+    .mini-chip {
+      padding: 0.55rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid rgba(68, 230, 255, 0.18);
+      background: rgba(68, 230, 255, 0.06);
+      color: #ddfaff;
+      font-size: 0.85rem;
+    }
+
+    .search-wrap {
+      margin-top: 1.8rem;
+      position: relative;
+    }
+
+    .search-panel {
+      padding: 1rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.9rem;
+      align-items: center;
+    }
+
+    .search-input-wrap {
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(4, 10, 16, 0.74);
+      color: var(--text);
+      padding: 1.15rem 1rem 1.15rem 3rem;
+      border-radius: 18px;
+      outline: none;
+      font-size: 1rem;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+    }
+
+    .search-input:focus {
+      border-color: rgba(68, 230, 255, 0.4);
+      box-shadow: 0 0 0 4px rgba(68, 230, 255, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1.1rem;
+      pointer-events: none;
+    }
+
+    .search-btn,
+    .ghost-btn {
+      border: none;
+      cursor: pointer;
+      color: #061018;
+      font-weight: 700;
+      font-size: 0.96rem;
+      border-radius: 16px;
+      padding: 1rem 1.25rem;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+    }
+
+    .search-btn {
+      background: linear-gradient(135deg, var(--red), var(--cyan));
+      box-shadow: 0 12px 30px rgba(68, 230, 255, 0.22);
+      min-width: 150px;
+    }
+
+    .ghost-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .search-btn:hover,
+    .ghost-btn:hover,
+    .sample-chip:hover,
+    .rec-card:hover,
+    .feature-card:hover,
+    .browse-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .suggestions {
+      position: absolute;
+      top: calc(100% + 0.55rem);
+      left: 0;
+      right: 0;
+      background: rgba(4, 10, 16, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      z-index: 10;
+      display: none;
+    }
+
+    .suggestions.show {
+      display: block;
+      animation: fadeUp 0.24s ease;
+    }
+
+    .suggestion-item {
+      width: 100%;
+      border: none;
+      text-align: left;
+      padding: 0.95rem 1rem;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s ease;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .suggestion-item:last-child {
+      border-bottom: 0;
+    }
+
+    .suggestion-item:hover,
+    .suggestion-item.active {
+      background: rgba(68, 230, 255, 0.08);
+    }
+
+    .suggestion-title {
+      display: block;
+      font-weight: 600;
+    }
+
+    .suggestion-meta {
+      display: block;
+      color: var(--muted);
+      font-size: 0.87rem;
+      margin-top: 0.25rem;
+    }
+
+    .section {
+      padding: 1.4rem 0 2.3rem;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-head h3 {
+      margin: 0;
+      font-family: "Syne", sans-serif;
+      font-size: clamp(1.7rem, 4vw, 2.6rem);
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      margin: 0.45rem 0 0;
+      color: var(--muted);
+      max-width: 64ch;
+      line-height: 1.7;
+    }
+
+    .sample-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .sample-chip,
+    .browse-card,
+    .feature-card,
+    .rec-card,
+    .how-card {
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .sample-chip {
+      padding: 1rem 1.1rem;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .sample-chip strong {
+      font-size: 1rem;
+    }
+
+    .sample-chip span {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .sample-chip:hover,
+    .browse-card:hover,
+    .feature-card:hover,
+    .rec-card:hover,
+    .how-card:hover {
+      border-color: rgba(68, 230, 255, 0.2);
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+    }
+
+    .messages {
+      display: grid;
+      gap: 0.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .message {
+      display: none;
+      padding: 1rem 1.1rem;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.04);
+      color: #e4edf8;
+    }
+
+    .message.show {
+      display: block;
+      animation: fadeUp 0.25s ease;
+    }
+
+    .message.error {
+      border-color: rgba(255, 77, 109, 0.25);
+      background: rgba(255, 77, 109, 0.08);
+    }
+
+    .message.loading {
+      border-color: rgba(68, 230, 255, 0.22);
+      background: rgba(68, 230, 255, 0.07);
+    }
+
+    .loading-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+
+    .loader {
+      width: 1rem;
+      height: 1rem;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-top-color: var(--cyan);
+      animation: spin 0.8s linear infinite;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .feature-card {
+      padding: 1.4rem;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow);
+    }
+
+    .feature-top {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .feature-icon,
+    .rec-icon,
+    .browse-icon {
+      flex-shrink: 0;
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(255, 77, 109, 0.16), rgba(68, 230, 255, 0.18));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 1.4rem;
+      font-family: "Syne", sans-serif;
+      color: var(--text);
+    }
+
+    .feature-copy h4,
+    .how-card h4,
+    .browse-card h4 {
+      margin: 0;
+      font-family: "Syne", sans-serif;
+      font-size: 1.45rem;
+      letter-spacing: -0.03em;
+    }
+
+    .feature-copy p,
+    .how-card p,
+    .browse-card p {
+      margin: 0.45rem 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .detail-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1.3rem;
+    }
+
+    .detail {
+      padding: 0.95rem 1rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .detail label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.35rem;
+    }
+
+    .detail span {
+      display: block;
+      line-height: 1.6;
+    }
+
+    .method-card {
+      padding: 1.4rem;
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03)),
+        rgba(8, 15, 24, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow);
+    }
+
+    .method-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.45rem 0.8rem;
+      border-radius: 999px;
+      background: rgba(255, 77, 109, 0.12);
+      border: 1px solid rgba(255, 77, 109, 0.15);
+      color: #ffd8df;
+      font-size: 0.85rem;
+      text-transform: capitalize;
+    }
+
+    .method-stack {
+      display: grid;
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    .method-stack .detail {
+      min-height: 100%;
+    }
+
+    .recommendations-grid,
+    .browse-grid,
+    .how-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .recommendations-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .browse-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .how-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .rec-card,
+    .browse-card,
+    .how-card {
+      padding: 1.3rem;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .rec-card::before,
+    .browse-card::before,
+    .how-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--red), var(--cyan), transparent);
+      opacity: 0.9;
+    }
+
+    .rec-head,
+    .browse-head {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .rec-copy h4,
+    .browse-copy h4 {
+      margin: 0;
+      font-family: "Syne", sans-serif;
+      font-size: 1.2rem;
+      letter-spacing: -0.03em;
+    }
+
+    .rec-copy p,
+    .browse-copy p {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .score-badge {
+      margin-top: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.8rem;
+      border-radius: 999px;
+      background: rgba(68, 230, 255, 0.1);
+      border: 1px solid rgba(68, 230, 255, 0.16);
+      color: #dcfbff;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .list-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.9rem;
+    }
+
+    .pill {
+      padding: 0.45rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.82rem;
+      color: #deebf7;
+    }
+
+    .muted-note {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .footer {
+      padding: 1rem 0 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1080px) {
+      .hero-grid,
+      .feature-grid,
+      .browse-grid,
+      .how-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sample-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .recommendations-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar-inner,
+      .section-head {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .hero {
+        padding-top: 4rem;
+      }
+
+      .hero-card,
+      .hero-side,
+      .feature-card,
+      .method-card,
+      .rec-card,
+      .browse-card,
+      .how-card {
+        padding: 1.1rem;
+      }
+
+      .hero-metrics,
+      .detail-list,
+      .sample-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .search-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .search-btn,
+      .ghost-btn {
+        width: 100%;
+      }
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 currentColor; }
+      70% { box-shadow: 0 0 0 12px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
+    @keyframes floatGlow {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(0, 20px, 0) scale(1.08); }
+    }
+
+    @keyframes typing {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+
+    @keyframes cursorBlink {
+      50% { border-color: transparent; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">C</div>
+        <div class="brand-copy">
+          <h1>CineAI</h1>
+          <p>Premium movie discovery powered by machine learning</p>
+        </div>
+      </div>
+      <div class="status-pill" id="statusPill">
+        <span class="status-dot"></span>
+        <span id="statusText">Checking server...</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="hero-card">
+          <span class="eyebrow">Movie Recommendation System</span>
+          <h2>Find your next <span class="accent">cinematic obsession</span>.</h2>
+          <p class="lead">
+            Type a movie you love and CineAI will return 10 similar titles using TF-IDF vectorization,
+            cosine similarity, and K-Means clustering. No posters, no clutter, just intelligent discovery.
+          </p>
+
+          <div class="hero-metrics">
+            <div class="metric">
+              <strong>Top 10</strong>
+              <span>Ranked recommendations for every search</span>
+            </div>
+            <div class="metric">
+              <strong>TF-IDF</strong>
+              <span>Text-driven feature extraction from movie metadata</span>
+            </div>
+            <div class="metric">
+              <strong>K-Means</strong>
+              <span>Cluster-aware recommendation refinement</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-side hero-card">
+          <div class="terminal-card">
+            <div class="terminal-top">
+              <div class="lights">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <span class="terminal-label">Recommendation Engine</span>
+            </div>
+            <div class="terminal-line">
+              <span class="prompt">&gt;</span>
+              <span class="typed">Searching similar movies for "Inception"</span>
+            </div>
+            <div class="chip-row">
+              <span class="mini-chip">Similarity Scored</span>
+              <span class="mini-chip">Cluster Matched</span>
+              <span class="mini-chip">Cast + Director Aware</span>
+            </div>
+          </div>
+
+          <div class="terminal-card">
+            <span class="eyebrow">Live Dataset Search</span>
+            <p class="muted-note">
+              Autocomplete suggestions come directly from the Flask API, so the frontend stays synced with your movie dataset.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <div class="glass-card search-panel">
+          <div class="search-input-wrap">
+            <span class="search-icon">⌕</span>
+            <input
+              id="movieInput"
+              class="search-input"
+              type="text"
+              placeholder="Search a movie title like Interstellar, Avatar, The Dark Knight..."
+              autocomplete="off"
+            />
+            <div class="suggestions" id="suggestions"></div>
+          </div>
+          <button id="searchBtn" class="search-btn">Get Recommendations</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>Trending Browse</h3>
+          <p>Quick-start searches pulled from your movie dataset. Tap any title to run a recommendation query instantly.</p>
+        </div>
+        <button id="refreshSamplesBtn" class="ghost-btn">Refresh Samples</button>
+      </div>
+      <div class="sample-grid" id="sampleGrid"></div>
+    </section>
+
+    <section class="section" id="resultsSection">
+      <div class="section-head">
+        <div>
+          <h3>Recommendation Results</h3>
+          <p>Featured movie details and the top 10 similar titles ranked by your Flask recommender.</p>
+        </div>
+      </div>
+
+      <div class="messages">
+        <div class="message loading" id="loadingMessage">
+          <div class="loading-row">
+            <span class="loader"></span>
+            <span>Analyzing movie vectors and fetching recommendations...</span>
+          </div>
+        </div>
+        <div class="message error" id="errorMessage"></div>
+      </div>
+
+      <div class="feature-grid hidden" id="featureGrid">
+        <article class="feature-card" id="featuredCard"></article>
+        <aside class="method-card" id="methodCard"></aside>
+      </div>
+
+      <div class="recommendations-grid" id="recommendationsGrid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>How It Works</h3>
+          <p>The interface stays simple, but the recommendation flow uses multiple machine learning steps under the hood.</p>
+        </div>
+      </div>
+      <div class="how-grid">
+        <article class="how-card">
+          <h4>TF-IDF Vectorization</h4>
+          <p>
+            Movie metadata like cast and director are converted into weighted text vectors. Important names get stronger weights,
+            while common words contribute less.
+          </p>
+        </article>
+        <article class="how-card">
+          <h4>Cosine Similarity</h4>
+          <p>
+            CineAI compares the angle between movie vectors to measure similarity. Smaller angles mean stronger content similarity
+            between the selected movie and candidate titles.
+          </p>
+        </article>
+        <article class="how-card">
+          <h4>K-Means Clustering</h4>
+          <p>
+            Movies are grouped into clusters with similar feature patterns. Recommendations can then be prioritized from the same
+            cluster before using broader similarity fallback matches.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>Browse the Dataset</h3>
+          <p>A wider view of available titles from the loaded movie list. Use these if you want inspiration before searching.</p>
+        </div>
+      </div>
+      <div class="browse-grid" id="browseGrid"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    CineAI frontend for Flask API at <span id="serverUrlLabel">http://127.0.0.1:5000</span>
+  </footer>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:5000";
+    const MOVIES_ENDPOINT = BASE_URL + "/api/movies";
+    const RECOMMEND_ENDPOINT = BASE_URL + "/api/recommend?title=";
+
+    const state = {
+      movies: [],
+      suggestions: [],
+      activeSuggestionIndex: -1
+    };
+
+    const elements = {
+      statusPill: document.getElementById("statusPill"),
+      statusText: document.getElementById("statusText"),
+      movieInput: document.getElementById("movieInput"),
+      suggestions: document.getElementById("suggestions"),
+      searchBtn: document.getElementById("searchBtn"),
+      refreshSamplesBtn: document.getElementById("refreshSamplesBtn"),
+      sampleGrid: document.getElementById("sampleGrid"),
+      browseGrid: document.getElementById("browseGrid"),
+      loadingMessage: document.getElementById("loadingMessage"),
+      errorMessage: document.getElementById("errorMessage"),
+      featuredCard: document.getElementById("featuredCard"),
+      methodCard: document.getElementById("methodCard"),
+      featureGrid: document.getElementById("featureGrid"),
+      recommendationsGrid: document.getElementById("recommendationsGrid"),
+      resultsSection: document.getElementById("resultsSection")
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function joinNames(list) {
+      if (!Array.isArray(list) || list.length === 0) {
+        return "Not available";
+      }
+      return list.join(", ");
+    }
+
+    function setStatus(mode, text) {
+      elements.statusPill.classList.remove("online", "offline");
+      if (mode) {
+        elements.statusPill.classList.add(mode);
+      }
+      elements.statusText.textContent = text;
+    }
+
+    function showLoading(show) {
+      elements.loadingMessage.classList.toggle("show", show);
+    }
+
+    function showError(message) {
+      elements.errorMessage.textContent = message;
+      elements.errorMessage.classList.add("show");
+    }
+
+    function clearError() {
+      elements.errorMessage.textContent = "";
+      elements.errorMessage.classList.remove("show");
+    }
+
+    function pickRandomMovies(count, source = state.movies) {
+      const pool = [...source];
+      const selected = [];
+      while (pool.length && selected.length < count) {
+        const index = Math.floor(Math.random() * pool.length);
+        selected.push(pool.splice(index, 1)[0]);
+      }
+      return selected;
+    }
+
+    function createMovieIcon(title) {
+      return escapeHtml((title || "M").slice(0, 2).toUpperCase());
+    }
+
+    function renderSuggestions(items) {
+      state.suggestions = items;
+      state.activeSuggestionIndex = -1;
+
+      if (!items.length) {
+        elements.suggestions.classList.remove("show");
+        elements.suggestions.innerHTML = "";
+        return;
+      }
+
+      elements.suggestions.innerHTML = items
+        .map((movie, index) => {
+          return `
+            <button class="suggestion-item" data-index="${index}" type="button">
+              <span class="suggestion-title">${escapeHtml(movie.title)}</span>
+              <span class="suggestion-meta">${escapeHtml(movie.director || "Unknown Director")} • ${escapeHtml(joinNames(movie.cast))}</span>
+            </button>
+          `;
+        })
+        .join("");
+
+      elements.suggestions.classList.add("show");
+    }
+
+    function updateSuggestionFocus() {
+      const items = elements.suggestions.querySelectorAll(".suggestion-item");
+      items.forEach((item, index) => {
+        item.classList.toggle("active", index === state.activeSuggestionIndex);
+      });
+    }
+
+    function hideSuggestions() {
+      elements.suggestions.classList.remove("show");
+      state.activeSuggestionIndex = -1;
+    }
+
+    function renderSampleSection() {
+      const samples = pickRandomMovies(4);
+      elements.sampleGrid.innerHTML = samples
+        .map((movie) => {
+          return `
+            <button class="sample-chip" type="button" data-title="${escapeHtml(movie.title)}">
+              <strong>${escapeHtml(movie.title)}</strong>
+              <span>${escapeHtml(movie.director || "Unknown Director")} • ${escapeHtml(joinNames(movie.cast))}</span>
+            </button>
+          `;
+        })
+        .join("");
+    }
+
+    function renderBrowseSection() {
+      const picks = pickRandomMovies(6);
+      elements.browseGrid.innerHTML = picks
+        .map((movie) => {
+          return `
+            <article class="browse-card">
+              <div class="browse-head">
+                <div class="browse-icon">${createMovieIcon(movie.title)}</div>
+                <div class="browse-copy">
+                  <h4>${escapeHtml(movie.title)}</h4>
+                  <p>Director: ${escapeHtml(movie.director || "Unknown")}</p>
+                </div>
+              </div>
+              <div class="list-pills">
+                ${(Array.isArray(movie.cast) && movie.cast.length ? movie.cast : ["Cast unavailable"])
+                  .slice(0, 4)
+                  .map((name) => `<span class="pill">${escapeHtml(name)}</span>`)
+                  .join("")}
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function renderFeaturedMovie(data) {
+      elements.featuredCard.innerHTML = `
+        <div class="feature-top">
+          <div class="feature-icon">${createMovieIcon(data.query)}</div>
+          <div class="feature-copy">
+            <h4>${escapeHtml(data.query)}</h4>
+            <p>This is the selected movie used to generate your recommendation list.</p>
+          </div>
+        </div>
+        <div class="detail-list">
+          <div class="detail">
+            <label>Director</label>
+            <span>${escapeHtml(data.queried_dir || "Unknown")}</span>
+          </div>
+          <div class="detail">
+            <label>Recommendation Count</label>
+            <span>${Array.isArray(data.results) ? data.results.length : 0} movies</span>
+          </div>
+          <div class="detail">
+            <label>Cast</label>
+            <span>${escapeHtml(joinNames(data.queried_cast))}</span>
+          </div>
+          <div class="detail">
+            <label>Cluster</label>
+            <span>${escapeHtml(String(data.cluster ?? "N/A"))}</span>
+          </div>
+        </div>
+      `;
+
+      elements.methodCard.innerHTML = `
+        <span class="method-badge">Method: ${escapeHtml(data.method || "kmeans")}</span>
+        <div class="method-stack">
+          <div class="detail">
+            <label>Pipeline</label>
+            <span>TF-IDF vectorization + cosine scoring + K-Means clustering</span>
+          </div>
+          <div class="detail">
+            <label>Interpretation</label>
+            <span>Higher similarity scores indicate a closer match based on cast and director feature vectors.</span>
+          </div>
+        </div>
+      `;
+
+      elements.featureGrid.classList.remove("hidden");
+    }
+
+    function renderRecommendations(results) {
+      if (!Array.isArray(results) || !results.length) {
+        elements.recommendationsGrid.innerHTML = "";
+        return;
+      }
+
+      elements.recommendationsGrid.innerHTML = results
+        .map((movie) => {
+          return `
+            <article class="rec-card">
+              <div class="rec-head">
+                <div class="rec-icon">${createMovieIcon(movie.title)}</div>
+                <div class="rec-copy">
+                  <h4>${escapeHtml(movie.title)}</h4>
+                  <p>Director: ${escapeHtml(movie.director || "Unknown")}</p>
+                </div>
+              </div>
+              <p class="muted-note">Cast: ${escapeHtml(joinNames(movie.cast))}</p>
+              <div class="score-badge">Similarity Score: ${escapeHtml(Number(movie.score ?? 0).toFixed(4))}</div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    async function loadMovies() {
+      setStatus("", "Checking server...");
+
+      try {
+        const response = await fetch(MOVIES_ENDPOINT);
+        if (!response.ok) {
+          throw new Error("Movie list request failed");
+        }
+
+        const movies = await response.json();
+        state.movies = Array.isArray(movies) ? movies : [];
+
+        setStatus("online", "Server online");
+        renderSampleSection();
+        renderBrowseSection();
+      } catch (error) {
+        state.movies = [];
+        setStatus("offline", "Server offline");
+        showError("Unable to connect to the Flask API. Make sure the server is running at http://127.0.0.1:5000.");
+      }
+    }
+
+    function findMatches(query) {
+      const value = query.trim().toLowerCase();
+      if (!value) {
+        return [];
+      }
+
+      return state.movies
+        .filter((movie) => movie.title && movie.title.toLowerCase().includes(value))
+        .slice(0, 8);
+    }
+
+    async function searchMovie(title) {
+      const query = (title || elements.movieInput.value).trim();
+      if (!query) {
+        showError("Enter a movie title to get recommendations.");
+        return;
+      }
+
+      clearError();
+      showLoading(true);
+      hideSuggestions();
+      elements.featureGrid.classList.add("hidden");
+      elements.recommendationsGrid.innerHTML = "";
+
+      try {
+        const response = await fetch(RECOMMEND_ENDPOINT + encodeURIComponent(query));
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Movie not found.");
+        }
+
+        renderFeaturedMovie(data);
+        renderRecommendations(data.results);
+        elements.resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) {
+        showError(error.message || "Something went wrong while fetching recommendations.");
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    elements.movieInput.addEventListener("input", (event) => {
+      clearError();
+      const matches = findMatches(event.target.value);
+      renderSuggestions(matches);
+    });
+
+    elements.movieInput.addEventListener("keydown", (event) => {
+      if (!state.suggestions.length) {
+        if (event.key === "Enter") {
+          searchMovie();
+        }
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        state.activeSuggestionIndex = (state.activeSuggestionIndex + 1) % state.suggestions.length;
+        updateSuggestionFocus();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        state.activeSuggestionIndex =
+          (state.activeSuggestionIndex - 1 + state.suggestions.length) % state.suggestions.length;
+        updateSuggestionFocus();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        const selected = state.suggestions[state.activeSuggestionIndex];
+        if (selected) {
+          elements.movieInput.value = selected.title;
+          searchMovie(selected.title);
+        } else {
+          searchMovie();
+        }
+      } else if (event.key === "Escape") {
+        hideSuggestions();
+      }
+    });
+
+    elements.suggestions.addEventListener("click", (event) => {
+      const button = event.target.closest(".suggestion-item");
+      if (!button) {
+        return;
+      }
+
+      const index = Number(button.dataset.index);
+      const selected = state.suggestions[index];
+      if (!selected) {
+        return;
+      }
+
+      elements.movieInput.value = selected.title;
+      searchMovie(selected.title);
+    });
+
+    elements.searchBtn.addEventListener("click", () => {
+      searchMovie();
+    });
+
+    elements.refreshSamplesBtn.addEventListener("click", () => {
+      renderSampleSection();
+      renderBrowseSection();
+    });
+
+    elements.sampleGrid.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-title]");
+      if (!button) {
+        return;
+      }
+
+      const title = button.dataset.title;
+      elements.movieInput.value = title;
+      searchMovie(title);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".search-input-wrap")) {
+        hideSuggestions();
+      }
+    });
+
+    loadMovies();
+  </script>
+</body>
+</html>
