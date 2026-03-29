@@ -4,6 +4,10 @@
 
 It provides a clean cinematic interface where users can search for a movie title and instantly receive similar movie recommendations based on cast and director relationships from the dataset.
 
+## 🌐 Live Demo
+
+**Deployed App:** https://cine-ai-xi.vercel.app/
+
 ## ✨ Highlights
 
 - 🎥 Modern single-page movie recommendation interface
@@ -69,15 +73,15 @@ cd "cine ai"
 pip install flask pandas scikit-learn
 ```
 
-### 3. Configure the dataset path
+### 3. Add the dataset
 
-The current backend uses this absolute path:
+Place the CSV file here:
 
-```python
-CSV_PATH = r"D:\Desktop\tmdb_5000_credits.csv"
+```text
+data/tmdb_5000_credits.csv
 ```
 
-Make sure the dataset exists there, or update `CSV_PATH` in [app.py](/d:/Desktop/cine%20ai/app.py) to match your local machine.
+You can also override the path with the `CSV_PATH` environment variable. The default path is configured in [app.py](/d:/Desktop/cine%20ai/app.py).
 
 ## ▶️ Run the Project
 
@@ -151,7 +155,7 @@ CineAI is a strong beginner-to-intermediate project because it demonstrates:
 
 ## 📝 Notes
 
-- The dataset file is not currently included in this repository.
+- The app expects the dataset at `data/tmdb_5000_credits.csv` unless `CSV_PATH` is set.
 - The backend loads and processes the dataset on startup.
 - Recommendation quality is based mainly on **cast** and **director** features in the current implementation.
 
