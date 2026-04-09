@@ -227,9 +227,9 @@ def recommend():
     for i, score in ranked_items:
         results.append(build_result_row(df.iloc[i], score))
 
-    # return jsonify(
-    #     {
-    #         "query": matched_title,
+    return jsonify(
+        {
+            "query": matched_title,
             "queried_cast": queried_cast[:4],
             "queried_dir": queried_dir,
             "method": "cosine" if method == "cosine" else "kmeans",
