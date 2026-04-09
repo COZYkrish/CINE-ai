@@ -232,11 +232,11 @@ def recommend():
     #         "query": matched_title,
     #         "queried_cast": queried_cast[:4],
     #         "queried_dir": queried_dir,
-    #         "method": "cosine" if method == "cosine" else "kmeans",
-    #         "cluster": int(df.iloc[idx]["cluster"]),
-    #         "results": results,
-    #     }
-    # )
+            "method": "cosine" if method == "cosine" else "kmeans",
+            "cluster": int(df.iloc[idx]["cluster"]),
+            "results": results,
+        }
+    )
 
 
 @app.after_request
