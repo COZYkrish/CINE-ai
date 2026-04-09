@@ -230,8 +230,8 @@ def recommend():
     # return jsonify(
     #     {
     #         "query": matched_title,
-    #         "queried_cast": queried_cast[:4],
-    #         "queried_dir": queried_dir,
+            "queried_cast": queried_cast[:4],
+            "queried_dir": queried_dir,
             "method": "cosine" if method == "cosine" else "kmeans",
             "cluster": int(df.iloc[idx]["cluster"]),
             "results": results,
