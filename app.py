@@ -245,8 +245,8 @@ def add_cors(response):
     return response
 
 
-# if __name__ == "__main__":
-#     print(f"Expected dataset path: {CSV_PATH}")
-#     print("Open your browser at: http://127.0.0.1:5000")
-#     print("Press Ctrl+C to stop.\n")
-#     app.run(debug=False, port=5000)
+if __name__ == "__main__":
+    print(f"Expected dataset path: {CSV_PATH}")
+    print("Open your browser at: http://127.0.0.1:5000")
+    print("Press Ctrl+C to stop.\n")
+    app.run(debug=False, port=5000)
